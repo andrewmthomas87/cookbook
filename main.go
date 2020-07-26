@@ -1,9 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,8 +11,7 @@ import (
 	"github.com/andrewmthomas87/cookbook/database"
 	"github.com/andrewmthomas87/cookbook/recipes"
 	"github.com/go-kit/kit/log"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/jmoiron/sqlx"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/spf13/viper"
 )
 
@@ -27,19 +26,20 @@ func main() {
 	logger = log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
 	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 
-	dbv := url.Values{}
-	dbv.Set("parseTime", "true")
-	dbv.Set("loc", viper.GetString("database.loc"))
-	db := sqlx.MustConnect("mysql",
-		fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?%s",
-			viper.GetString("database.user"),
-			viper.GetString("database.password"),
-			viper.GetString("database.host"),
-			viper.GetInt("database.port"),
-			viper.GetString("database.database"),
-			dbv.Encode()))
+	config, err := pgxpool.ParseConfig("")
+	if err != nil {
+		panic(err)
+	}
+	config.ConnConfig.Database = viper.GetString("db.database")
+	config.ConnConfig.User = viper.GetString("db.user")
+	config.ConnConfig.Password = viper.GetString("db.password")
 
-	rr := database.NewRecipesRepository(db)
+	p, err := pgxpool.ConnectConfig(context.Background(), config)
+	if err != nil {
+		panic(err)
+	}
+
+	rr := database.NewRecipesRepository(p)
 
 	var rec recipes.Service
 	rec = recipes.NewService(rr)
@@ -69,7 +69,7 @@ func main() {
 
 func accessControl(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8000")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")

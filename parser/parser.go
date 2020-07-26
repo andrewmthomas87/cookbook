@@ -3,34 +3,52 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"flag"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/jackc/pgx/v4"
 )
 
 func main() {
-	fileCmd := flag.NewFlagSet("file", flag.ExitOnError)
-	foldersCmd := flag.NewFlagSet("folders", flag.ExitOnError)
-
-	if len(os.Args) < 2 {
-		log.Fatal("expected 'file' or 'folders' subcommands")
+	config, err := pgx.ParseConfig(os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	config.Config.Database = "cookbook"
+	config.Config.User = "postgres"
+	config.Config.Password = "Asdf195789"
+	conn, err := pgx.ConnectConfig(context.Background(), config);
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	switch os.Args[1] {
-	case "file":
-		fileCmd.Parse(os.Args[2:])
+	cs := parseFolders(os.Args[1])
+	for category, rs := range cs {
+		fmt.Println(category)
+		for _, r := range rs {
+			var id int
+			if err := conn.QueryRow(context.Background(), "INSERT INTO recipes (category, name, yields, updated) VALUES ($1, $2, $3, $4) RETURNING id", category, r.name, r.yields, r.date).Scan(&id); err != nil {
+				log.Fatal(err)
+			}
 
-		fmt.Println(parseFile(fileCmd.Arg(0)))
-	case "folders":
-		foldersCmd.Parse(os.Args[2:])
-
-		parseFolders(foldersCmd.Arg(0))
-	default:
-		log.Fatal("expected 'file' or 'folders' subcommands")
+			for _, ingredient := range r.ingredients {
+				_, err := conn.Exec(context.Background(), "INSERT INTO ingredients (recipeid, value) VALUES ($1, $2)", id, ingredient)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+			for _, instruction := range r.instructions {
+				_, err := conn.Exec(context.Background(), "INSERT INTO instructions (recipeid, value) VALUES ($1, $2)", id, instruction)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+		}
 	}
 }
 
@@ -42,31 +60,32 @@ type recipe struct {
 	date         string
 }
 
-func parseFolders(dirname string) {
+func parseFolders(dirname string) map[string][]recipe {
 	directories, err := ioutil.ReadDir(dirname)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	cs := make(map[string][]recipe)
 	for _, d := range directories {
 		if d.IsDir() {
-			fmt.Println("Entering '" + d.Name() + "'")
-
 			files, err := ioutil.ReadDir(filepath.Join(dirname, d.Name()))
 			if err != nil {
 				log.Fatal(err)
 			}
 
+			var rs []recipe
 			for _, f := range files {
-				parseFile(filepath.Join(dirname, d.Name(), f.Name()))
+				f := parseFile(filepath.Join(dirname, d.Name(), f.Name()))
+				rs = append(rs, f)
 			}
+			cs[d.Name()] = rs
 		}
 	}
+	return cs
 }
 
 func parseFile(filename string) recipe {
-	fmt.Println("Parsing '" + filename + "'")
-
 	f, err := os.Open(filename)
 	if err != nil {
 		log.Fatal(err)

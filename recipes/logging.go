@@ -28,3 +28,15 @@ func (s *loggingService) GetRecipes(ctx context.Context) (rs []*models.Recipe, e
 	}(time.Now())
 	return s.Service.GetRecipes(ctx)
 }
+
+func (s *loggingService) GetRecipe(ctx context.Context, id models.RecipeID) (r *models.Recipe, ingredients []*models.Ingredient, instructions []*models.Instruction, err error) {
+	defer func(begin time.Time) {
+		s.logger.Log(
+			"method", "get recipe",
+			"id", id,
+			"took", time.Since(begin),
+			"err", err,
+		)
+	}(time.Now())
+	return s.Service.GetRecipe(ctx, id)
+}
