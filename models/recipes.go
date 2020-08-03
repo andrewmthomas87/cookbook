@@ -14,6 +14,7 @@ type Recipe struct {
 	Name         string
 	Yields       string
 	Updated      string
+	Image        string
 	Ingredients  []*Ingredient
 	Instructions []*Instruction
 }

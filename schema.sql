@@ -3,7 +3,8 @@ CREATE TABLE recipes (
 	category TEXT,
 	name TEXT,
 	yields TEXT,
-	updated TEXT
+	updated TEXT,
+	image TEXT
 );
 
 CREATE TABLE ingredients (

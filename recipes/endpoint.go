@@ -57,6 +57,7 @@ type Recipe struct {
 	Name     string          `json:"name,omitempty"`
 	Yields   string          `json:"yields,omitempty"`
 	Updated  string          `json:"updated,omitempty"`
+	Image    string          `json:"image,omitempty"`
 }
 
 // Ingredient is a read model for models.Ingredient.
@@ -82,6 +83,7 @@ func convertRecipes(recipes []*models.Recipe) []Recipe {
 			Name:     r.Name,
 			Yields:   r.Yields,
 			Updated:  r.Updated,
+			Image:    r.Image,
 		})
 	}
 	return rs
@@ -97,6 +99,7 @@ func convertRecipe(recipe *models.Recipe) Recipe {
 		Name:     recipe.Name,
 		Yields:   recipe.Yields,
 		Updated:  recipe.Updated,
+		Image:    recipe.Image,
 	}
 }
 

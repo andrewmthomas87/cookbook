@@ -22,7 +22,7 @@ func (r *recipesRepository) CreateRecipe(ctx context.Context, init *models.Recip
 }
 
 func (r *recipesRepository) GetRecipes(ctx context.Context) ([]*models.Recipe, error) {
-	sql := "SELECT id, category, name, yields, updated FROM recipes"
+	sql := "SELECT id, category, name, yields, updated, image FROM recipes"
 	rows, err := r.p.Query(ctx, sql)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func (r *recipesRepository) GetRecipes(ctx context.Context) ([]*models.Recipe, e
 	var rs []*models.Recipe
 	for rows.Next() {
 		var r models.Recipe
-		if err := rows.Scan(&r.ID, &r.Category, &r.Name, &r.Yields, &r.Updated); err != nil {
+		if err := rows.Scan(&r.ID, &r.Category, &r.Name, &r.Yields, &r.Updated, &r.Image); err != nil {
 			return nil, err
 		}
 		rs = append(rs, &r)
@@ -43,9 +43,9 @@ func (r *recipesRepository) GetRecipes(ctx context.Context) ([]*models.Recipe, e
 }
 
 func (r *recipesRepository) GetRecipe(ctx context.Context, id models.RecipeID) (*models.Recipe, error) {
-	sql := "SELECT id, category, name, yields, updated FROM recipes WHERE id=$1"
+	sql := "SELECT id, category, name, yields, updated, image FROM recipes WHERE id=$1"
 	var rec models.Recipe
-	if err := r.p.QueryRow(ctx, sql, id).Scan(&rec.ID, &rec.Category, &rec.Name, &rec.Yields, &rec.Updated); err != nil {
+	if err := r.p.QueryRow(ctx, sql, id).Scan(&rec.ID, &rec.Category, &rec.Name, &rec.Yields, &rec.Updated, &rec.Image); err != nil {
 		return nil, err
 	}
 	return &rec, nil
